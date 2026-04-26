@@ -1,19 +1,19 @@
-import { TargetSteeringTransformer } from './transformers/impl/TargetSteeringTransformer.js';
+import { TargetSteeringBehaviour } from './behaviours/impl/TargetSteeringBehaviour.js';
 import { SteeringContext } from './model/SteeringContext.js';
 import { lerpVector, clampVectorMagnitude } from '../Util/NumUtils.js';
 
-export class VelocityTransformController {
-    velocityTransformers;
+export class SteeringController {
+    steeringBehaviours;
 
     constructor() {
-        this.initTransformers();
+        this.initBehaviours();
     }
 
     updateBoid(boid, boids, target) {
         const ctx = new SteeringContext();
 
-        for(var i = 0; i < this.velocityTransformers.length; ++i){
-            this.velocityTransformers[i].transform(ctx, boid, boids, target);
+        for(let i = 0; i < this.steeringBehaviours.length; ++i){
+            this.steeringBehaviours[i].steer(ctx, boid, boids, target);
         }
 
         const desiredVelocity = ctx.desiredVelocity();
@@ -35,9 +35,9 @@ export class VelocityTransformController {
         boid.move(newVelocity);
     }
 
-    initTransformers() {
-        this.velocityTransformers = [
-            new TargetSteeringTransformer(),
+    initBehaviours() {
+        this.steeringBehaviours = [
+            new TargetSteeringBehaviour(),
         ];
     }
 }

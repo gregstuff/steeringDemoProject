@@ -1,13 +1,12 @@
-import { DIRECTION_VECTORS } from '../constants/Direction.js';
-import { normalizeVector } from '../../Util/NumUtils.js';
+import { DIRECTION_VECTORS, DIRECTION_COUNT } from '../constants/Direction.js';
 
 export class SteeringContext {
     interestMap;
     dangerMap;
 
     constructor(){
-        this.interestMap = [0,0,0,0,0,0,0,0];
-        this.dangerMap = [0,0,0,0,0,0,0,0];
+        this.interestMap = Array(DIRECTION_COUNT).fill(0);
+        this.dangerMap = Array(DIRECTION_COUNT).fill(0);
     }
 
     putDangerForDirection(direction, score) {
@@ -31,15 +30,15 @@ export class SteeringContext {
         const normalizedAngle = angle < 0 ? angle + Math.PI * 2 : angle;
 
         // 8 slices around the circle
-        const slice = Math.PI * 2 / 8;
+        const slice = Math.PI * 2 / DIRECTION_COUNT;
 
-        return Math.round(normalizedAngle / slice) % 8;
+        return Math.round(normalizedAngle / slice) % DIRECTION_COUNT;
     }
 
     desiredVelocity() {
         const result = { x: 0, y: 0 };
 
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < DIRECTION_COUNT; i++) {
             const interest = this.interestMap[i];
             const danger = this.dangerMap[i];
 

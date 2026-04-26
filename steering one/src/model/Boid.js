@@ -1,5 +1,3 @@
-import { normalizeVector } from '../Util/NumUtils.js';
-
 export class Boid {
     x;
     y;
@@ -33,13 +31,7 @@ export class Boid {
             y: Math.sin(this.rotation)
         };
     }
-
-    moveForwards(){
-        const forward = this.getForward(this.rotation);
-        this.x += forward.x * this.maximumSpeed;
-        this.y += forward.y * this.maximumSpeed;
-    }
-
+    
     move(velocity) {
         const { x, y } = velocity;
         

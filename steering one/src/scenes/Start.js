@@ -1,7 +1,7 @@
 import { Boid } from '../model/Boid.js';
 import { randomRange } from '../Util/NumUtils.js';
 import { drawBoid, drawX } from '../Util/GraphicsUtils.js';
-import { VelocityTransformController } from '../velocityTransform/VelocityTransformController.js';
+import { SteeringController } from '../steering/SteeringController.js';
 
 
 export class Start extends Phaser.Scene {
@@ -18,13 +18,13 @@ export class Start extends Phaser.Scene {
     width;
     height;
 
-    velocityController;
+    steeringController;
 
     targetPos;
 
     constructor() {
         super('Start');
-        this.velocityController = new VelocityTransformController();
+        this.steeringController = new SteeringController();
     }
 
     preload() {
@@ -52,13 +52,13 @@ export class Start extends Phaser.Scene {
         const startingY = randomRange(0, this.height);
         const startingRotation = randomRange(0, Math.PI * 2);
 
-        for(var i  = 0; i < quantity; ++i){
+        for(let i  = 0; i < quantity; ++i){
             this.boids.push(new Boid(startingX, startingY, startingRotation));
         }
     }
 
     drawBoids() {
-        for(var i = 0; i < this.boids.length; ++i){
+        for(let i = 0; i < this.boids.length; ++i){
             const { x, y, rotation, size } = this.boids[i];
             drawBoid(this.graphics, x, y, rotation, size);
         }
@@ -73,8 +73,8 @@ export class Start extends Phaser.Scene {
     }
 
     updateBoids(){
-        for(var i = 0; i < this.boids.length; ++i){
-            this.velocityController.updateBoid(this.boids[i], this.boids, this.targetPos);
+        for(let i = 0; i < this.boids.length; ++i){
+            this.steeringController.updateBoid(this.boids[i], this.boids, this.targetPos);
             this.wrapAround(this.boids[i]);
         }
     }

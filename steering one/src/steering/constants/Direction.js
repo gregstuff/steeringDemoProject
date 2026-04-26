@@ -11,6 +11,7 @@ export const DirectionIndex = Object.freeze({
     UP_RIGHT: 7
 });
 
+export const DIRECTION_COUNT = Object.keys(DirectionIndex).length;
 
 export const DIRECTION_VECTORS = [
     { x: 1,  y: 0  }, // RIGHT
