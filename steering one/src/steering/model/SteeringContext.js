@@ -1,4 +1,5 @@
 import { DIRECTION_VECTORS, DIRECTION_COUNT } from '../constants/Direction.js';
+import { vectorMagnitude, vectorMult } from '../../Util/NumUtils.js';
 
 export class SteeringContext {
     interestMap;
@@ -9,15 +10,19 @@ export class SteeringContext {
         this.dangerMap = Array(DIRECTION_COUNT).fill(0);
     }
 
-    putDangerForDirection(direction, score) {
-        const relevantIndex = this.directionToIndex(direction);
+    putDangerForVelocity(velocity, weightResolver) {
+        const weightedVelocity = vectorMult(velocity, weightResolver());
+        const relevantIndex = this.directionToIndex(weightedVelocity);
+        const score = vectorMagnitude(weightedVelocity);
 
         if(this.dangerMap[relevantIndex] <= score)
             this.dangerMap[relevantIndex] = score;
     }
 
-    putInterestForDirection(direction, score) {
-        const relevantIndex = this.directionToIndex(direction);
+    putInterestForVelocity(velocity, weightResolver) {
+        const weightedVelocity = vectorMult(velocity, weightResolver());
+        const relevantIndex = this.directionToIndex(weightedVelocity);
+        const score = vectorMagnitude(weightedVelocity);
 
         if(this.interestMap[relevantIndex] <= score)
             this.interestMap[relevantIndex] = score;

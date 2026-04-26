@@ -7,7 +7,7 @@ export class Boid {
     turnSharpness;
     velocity;
 
-    constructor(x, y, rotation, size = 30, maximumSpeed = 3, turnSharpness = 0.05) {
+    constructor(x, y, rotation, size = 30, maximumSpeed = 3, turnSharpness = 0.03) {
         this.x = x;
         this.y = y;
         this.size = size;
@@ -46,6 +46,10 @@ export class Boid {
 
     updateRotation(movementVector) {
         this.rotation = Math.atan2(movementVector.y, movementVector.x);
+    }
+
+    pos() {
+        return { x: this.x, y: this.y };
     }
 
 }

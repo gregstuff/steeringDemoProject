@@ -25,6 +25,10 @@ export function lerpVector(a, b, t) {
     };
 }
 
+export function vectorMagnitude(vector){
+    return Math.hypot(vector.x, vector.y);
+}
+
 export function clampVectorMagnitude(vector, maxLength) {
     const length = Math.hypot(vector.x, vector.y);
 
@@ -37,5 +41,28 @@ export function clampVectorMagnitude(vector, maxLength) {
     return {
         x: vector.x * scale,
         y: vector.y * scale
+    };
+}
+
+export function vectorDist(a, b) {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+
+    const distance = Math.hypot(dx, dy);
+    
+    return distance;
+}
+
+export function vectorMult(vector, scale) {
+    return {
+        x: vector.x * scale,
+        y: vector.y * scale    
+    };
+}
+
+export function vectorDir(a, b) {
+    return {
+        x: a.x - b.x,
+        y: a.y - b.y
     };
 }

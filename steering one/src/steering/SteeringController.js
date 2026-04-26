@@ -4,8 +4,10 @@ import { lerpVector, clampVectorMagnitude } from '../Util/NumUtils.js';
 
 export class SteeringController {
     steeringBehaviours;
+    targetSteeringWeightResolver;
 
     constructor() {
+        this.initTargetSteeringWeightResolvers();
         this.initBehaviours();
     }
 
@@ -18,13 +20,7 @@ export class SteeringController {
 
         const desiredVelocity = ctx.desiredVelocity();
 
-        const clampedDesiredVelocity = clampVectorMagnitude(
-            {
-                x: desiredVelocity.x * boid.maximumSpeed,
-                y: desiredVelocity.y * boid.maximumSpeed
-            },
-            boid.maximumSpeed
-        );
+        const clampedDesiredVelocity = clampVectorMagnitude(desiredVelocity, boid.maximumSpeed);
 
         const newVelocity = lerpVector(
             boid.velocity,
@@ -37,7 +33,13 @@ export class SteeringController {
 
     initBehaviours() {
         this.steeringBehaviours = [
-            new TargetSteeringBehaviour(),
+            new TargetSteeringBehaviour(this.targetSteeringWeightResolver),
         ];
     }
+
+    initTargetSteeringWeightResolvers(){
+        this.targetSteeringWeightResolver = () => 0.5;
+    }
+
+
 }
