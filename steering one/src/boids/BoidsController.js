@@ -62,20 +62,20 @@ export class BoidsController {
     wrapAround(boid){
         let {x, y} = boid.pos;
 
-        const outOfBoundsWidthMin = x < this.widthBoundsMin;
-        const outOfBoundsWidthMax = x > this.widthBoundsMax;
-        const outOfBoundsHeightMin = y < this.heightBoundsMin;
-        const outOfBoundsHeightMax = y > this.heightBoundsMax;
+        const outOfBoundsWidthMin = x < this.bounds.widthBoundsMin;
+        const outOfBoundsWidthMax = x > this.bounds.widthBoundsMax;
+        const outOfBoundsHeightMin = y < this.bounds.heightBoundsMin;
+        const outOfBoundsHeightMax = y > this.bounds.heightBoundsMax;
         
         if(!outOfBoundsWidthMin 
         && !outOfBoundsWidthMax 
         && !outOfBoundsHeightMin
         && !outOfBoundsHeightMax) return;
 
-        x = outOfBoundsWidthMin ? this.width : outOfBoundsWidthMax ? 0 : x;
-        y = outOfBoundsHeightMin ? this.height : outOfBoundsHeightMax ? 0 : y;
+        x = outOfBoundsWidthMin ? this.bounds.width : outOfBoundsWidthMax ? 0 : x;
+        y = outOfBoundsHeightMin ? this.bounds.height : outOfBoundsHeightMax ? 0 : y;
 
-        boid.updatePosition(x, y);
+        boid.pos.set(x, y);
     }
 
     setupEvents() {
