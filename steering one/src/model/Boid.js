@@ -1,55 +1,26 @@
 export class Boid {
-    x;
-    y;
-    size;
-    rotation;
-    maximumSpeed;
-    turnSharpness;
-    velocity;
-
-    constructor(x, y, rotation, size = 30, maximumSpeed = 3, turnSharpness = 0.03) {
-        this.x = x;
-        this.y = y;
+    constructor(pos, startingVelocity, size, maximumSpeed, maximumForce) {
+        this.pos = pos;
+         this.velocity = startingVelocity;
         this.size = size;
-        this.rotation = rotation;
         this.maximumSpeed = maximumSpeed;
-        this.turnSharpness = turnSharpness;
-        this.velocity = {
-            x: Math.cos(rotation) * maximumSpeed,
-            y: Math.sin(rotation) * maximumSpeed
-        };
-    }
-
-    updatePosition(x, y){
-        this.x = x;
-        this.y = y;
-    }
-
-    getForward(){
-        return {
-            x: Math.cos(this.rotation),
-            y: Math.sin(this.rotation)
-        };
+        this.maximumForce = maximumForce;
     }
     
     move(velocity) {
-        const { x, y } = velocity;
-        
-        this.x += x;
-        this.y += y;
+        const { currX, currY } = this.velocity;
+        const { newX, newY } = velocity;
 
-        if (Math.hypot(velocity.x, velocity.y) > 0.0001) {
-            this.velocity = velocity;
-            this.updateRotation(velocity);
-        }
+        this.velocity = new Phaser.Math.Vector2(currX + newX, currY + newY);
     }
 
-    updateRotation(movementVector) {
-        this.rotation = Math.atan2(movementVector.y, movementVector.x);
-    }
-
-    pos() {
-        return { x: this.x, y: this.y };
+    getRotation() {
+        return Phaser.Math.Angle.Between(
+            0,
+            0,
+            velocity.x,
+            velocity.y
+        );
     }
 
 }

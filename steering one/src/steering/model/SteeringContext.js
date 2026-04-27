@@ -1,28 +1,24 @@
 import { DIRECTION_VECTORS, DIRECTION_COUNT } from '../constants/Direction.js';
-import { vectorMagnitude, vectorMult } from '../../Util/NumUtils.js';
 
 export class SteeringContext {
-    interestMap;
-    dangerMap;
-
     constructor(){
         this.interestMap = Array(DIRECTION_COUNT).fill(0);
         this.dangerMap = Array(DIRECTION_COUNT).fill(0);
     }
 
     putDangerForVelocity(velocity, weightResolver) {
-        const weightedVelocity = vectorMult(velocity, weightResolver());
+        const weightedVelocity = velocity.clone().scale(weight)
         const relevantIndex = this.directionToIndex(weightedVelocity);
-        const score = vectorMagnitude(weightedVelocity);
+        const score = weightedVelocity.length();
 
         if(this.dangerMap[relevantIndex] <= score)
             this.dangerMap[relevantIndex] = score;
     }
 
     putInterestForVelocity(velocity, weightResolver) {
-        const weightedVelocity = vectorMult(velocity, weightResolver());
+        const weightedVelocity = velocity.clone().scale(weight)
         const relevantIndex = this.directionToIndex(weightedVelocity);
-        const score = vectorMagnitude(weightedVelocity);
+        const score = weightedVelocity.length();
 
         if(this.interestMap[relevantIndex] <= score)
             this.interestMap[relevantIndex] = score;
@@ -53,6 +49,6 @@ export class SteeringContext {
             result.y += DIRECTION_VECTORS[i].y * score;
         }
 
-        return result;
+        return new Phaser.Math.Vector2(result.x, result.y);
     }
 }

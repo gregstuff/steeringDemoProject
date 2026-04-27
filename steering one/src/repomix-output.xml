@@ -41,16 +41,20 @@ The content is organized as follows:
 
 <directory_structure>
 .gitignore
+boids/BoidsConfig.js
+boids/BoidsController.js
+config/GameConfig.js
 main.js
 model/Boid.js
+model/Bounds.js
 scenes/Start.js
 steering/behaviours/impl/TargetSteeringBehaviour.js
 steering/behaviours/SteeringBehaviour.js
 steering/constants/Direction.js
+steering/constants/SteeringType.js
 steering/model/SteeringContext.js
 steering/SteeringController.js
-Util/GraphicsUtils.js
-Util/NumUtils.js
+util/GraphicsUtils.js
 </directory_structure>
 
 <files>
@@ -58,6 +62,119 @@ This section contains the contents of the repository's files.
 
 <file path=".gitignore">
 ./repomix-output.xml
+</file>
+
+<file path="boids/BoidsConfig.js">
+export class BoidsConfig {
+    constructor(id, initialCount, size, maximumSpeed, maximumForce, steeringBehaviours, eventEmitter){
+        this.id = id;
+        this.initialCount = initialCount;
+        this.size = size;
+        this.maximumSpeed = maximumSpeed;
+        this.maximumForce = maximumForce;
+        this.eventEmitter = eventEmitter;
+        this.steeringBehaviours = steeringBehaviours;
+    }
+}
+</file>
+
+<file path="boids/BoidsController.js">
+export class BoidsController {
+
+    constructor(graphics, dimensions, config){
+        this.graphics = graphics;
+        this.dimensions = dimensions;
+        this.config = config;
+        this.setupEvents();
+        this.initBoids();
+        this.steeringController = new SteeringController(config.steeringBehaviours);
+    }
+
+    tick(){
+        this.updateBoids();
+        this.drawBoids();
+    }
+
+    initBoids(){
+        this.boids = [];
+
+        const { maximumSpeed, size, maximumSpeed, maximumForce, initialCount } = this.config;
+
+        for(let i  = 0; i < initialCount; ++i){
+
+            const startingPos = new Phaser.Math.Vector2(
+                Phaser.Math.Between(0, this.dimensions.width), 
+                Phaser.Math.Between(0, this.dimensions.height));
+
+            const startingVelocity = new Phaser.Math.Vector2(
+                Phaser.Math.Between(0, 1), 
+                Phaser.Math.Between(0, 1))
+                .normalize()
+                .scale(maximumSpeed);
+
+            this.boids.push(new Boid(startingPos, startingVelocity, size, maximumSpeed, maximumForce));
+        }
+    }
+
+    drawBoids() {
+        for(let i = 0; i < this.boids.length; ++i){
+            const { x, y, rotation, size } = this.boids[i];
+            drawBoid(this.graphics, x, y, rotation, size);
+        }
+    }
+
+     updateBoids(){
+        for(let i = 0; i < this.boids.length; ++i){
+            this.steeringController.updateBoid(this.boids[i], this.boids, this.targetPos);
+            this.wrapAround(this.boids[i]);
+        }
+    }
+
+    wrapAround(boid){
+        let {x, y} = boid;
+
+        const outOfBoundsWidthMin = x < this.widthBoundsMin;
+        const outOfBoundsWidthMax = x > this.widthBoundsMax;
+        const outOfBoundsHeightMin = y < this.heightBoundsMin;
+        const outOfBoundsHeightMax = y > this.heightBoundsMax;
+        
+        if(!outOfBoundsWidthMin 
+        && !outOfBoundsWidthMax 
+        && !outOfBoundsHeightMin
+        && !outOfBoundsHeightMax) return;
+
+        x = outOfBoundsWidthMin ? this.width : outOfBoundsWidthMax ? 0 : x;
+        y = outOfBoundsHeightMin ? this.height : outOfBoundsHeightMax ? 0 : y;
+
+        boid.updatePosition(x, y);
+    }
+
+    setupEvents() {
+        this.config.eventEmitter.on('spawn', handleSpawn, this);
+    }
+
+    handleSpawn() {
+        console.log('handle spawn!');
+    }
+
+}
+</file>
+
+<file path="config/GameConfig.js">
+export const GAME_CONFIG = {
+    boidsControllers: [
+        {
+            id: 'boids controller one',
+            initialCount: 2,
+            size: 30,
+            maximumSpeed: 3,
+            maximumForce: 0.02,
+            steeringBehaviours: [
+                'TARGET',
+            ]
+        }
+    ]
+};
 </file>
 
 <file path="main.js">
@@ -86,90 +203,61 @@ new Phaser.Game(config);
 
 <file path="model/Boid.js">
 export class Boid {
-    x;
-    y;
-    size;
-    rotation;
-    maximumSpeed;
-    turnSharpness;
-    velocity;
-
-    constructor(x, y, rotation, size = 30, maximumSpeed = 3, turnSharpness = 0.03) {
-        this.x = x;
-        this.y = y;
+    constructor(pos, startingVelocity, size, maximumSpeed, maximumForce) {
+        this.pos = pos;
+         this.velocity = startingVelocity;
         this.size = size;
-        this.rotation = rotation;
         this.maximumSpeed = maximumSpeed;
-        this.turnSharpness = turnSharpness;
-        this.velocity = {
-            x: Math.cos(rotation) * maximumSpeed,
-            y: Math.sin(rotation) * maximumSpeed
-        };
-    }
-
-    updatePosition(x, y){
-        this.x = x;
-        this.y = y;
-    }
-
-    getForward(){
-        return {
-            x: Math.cos(this.rotation),
-            y: Math.sin(this.rotation)
-        };
+        this.maximumForce = maximumForce;
     }
     
     move(velocity) {
-        const { x, y } = velocity;
-        
-        this.x += x;
-        this.y += y;
+        const { currX, currY } = this.velocity;
+        const { newX, newY } = velocity;
 
-        if (Math.hypot(velocity.x, velocity.y) > 0.0001) {
-            this.velocity = velocity;
-            this.updateRotation(velocity);
-        }
+        this.velocity = new Phaser.Math.Vector2(currX + newX, currY + newY);
     }
 
-    updateRotation(movementVector) {
-        this.rotation = Math.atan2(movementVector.y, movementVector.x);
-    }
-
-    pos() {
-        return { x: this.x, y: this.y };
+    getRotation() {
+        return Phaser.Math.Angle.Between(
+            0,
+            0,
+            velocity.x,
+            velocity.y
+        );
     }
 
 }
 </file>
 
-<file path="scenes/Start.js">
-import { Boid } from '../model/Boid.js';
-import { randomRange } from '../Util/NumUtils.js';
-import { drawBoid, drawX } from '../Util/GraphicsUtils.js';
-import { SteeringController } from '../steering/SteeringController.js';
+<file path="model/Bounds.js">
+export class Bounds {
+    constructor(width, height, boundsBuffer){
+        this.width = width;
+        this.height = height;
 
+        this.widthBoundsMax = width * boundsBuffer;
+        this.widthBoundsMin = width - widthBoundsMax;
+
+        this.heightBoundsMax = height * boundsBuffer;
+        this.heightBoundsMin = height - heightBoundsMax;
+    }
+}
+</file>
+
+<file path="scenes/Start.js">
+import { Bounds } from '../model/Bounds.js';
+import { drawBoid, drawX } from '../Util/GraphicsUtils.js';
+import { BoidsController } from '../boids/BoidsController.js';
+import { BoidsConfig } from '../boids/BoidsConfig.js';
+import { GAME_CONFIG } from '../config/GameConfig.js'; 
+
+const BOUNDS_BUFFER = 1.2;
 
 export class Start extends Phaser.Scene {
-
-    boundsBuffer = 1.2; // once we go x% out of bounds then wrap around
-
-    widthBoundsMax;
-    widthBoundsMin;
-    heightBoundsMax;
-    heightBoundsMin;
-
-    graphics;
-    boids;
-    width;
-    height;
-
-    steeringController;
-
-    targetPos;
-
     constructor() {
         super('Start');
-        this.steeringController = new SteeringController();
+        this.targetPos = undefined;
     }
 
     preload() {
@@ -178,34 +266,18 @@ export class Start extends Phaser.Scene {
 
     create() {
         this.graphics = this.add.graphics();
-        this.dimensionsSetup();
-        this.initBoids();
         this.setupInputs();
+        this.eventEmitters = {};
+        this.bounds = new Bounds(this.scale.width, this.scale.height, BOUNDS_BUFFER);
+        this.initBoidsControllers();
     }
 
     update() {
         this.graphics.clear();
-        this.updateBoids();
-        this.drawBoids();
         this.drawTarget();
-    }
 
-    initBoids(quantity = 1){
-        this.boids = [];
-
-        const startingX = randomRange(0, this.width);
-        const startingY = randomRange(0, this.height);
-        const startingRotation = randomRange(0, Math.PI * 2);
-
-        for(let i  = 0; i < quantity; ++i){
-            this.boids.push(new Boid(startingX, startingY, startingRotation));
-        }
-    }
-
-    drawBoids() {
-        for(let i = 0; i < this.boids.length; ++i){
-            const { x, y, rotation, size } = this.boids[i];
-            drawBoid(this.graphics, x, y, rotation, size);
+        for(let i = 0; i < this.boidsControllers; ++i){
+            this.boidsControllers[i].tick();
         }
     }
 
@@ -217,53 +289,22 @@ export class Start extends Phaser.Scene {
         drawX(this.graphics, x,y);
     }
 
-    updateBoids(){
-        for(let i = 0; i < this.boids.length; ++i){
-            this.steeringController.updateBoid(this.boids[i], this.boids, this.targetPos);
-            this.wrapAround(this.boids[i]);
-        }
-    }
-
-    wrapAround(boid){
-        let {x, y} = boid;
-
-        const outOfBoundsWidthMin = x < this.widthBoundsMin;
-        const outOfBoundsWidthMax = x > this.widthBoundsMax;
-        const outOfBoundsHeightMin = y < this.heightBoundsMin;
-        const outOfBoundsHeightMax = y > this.heightBoundsMax;
-        
-        if(!outOfBoundsWidthMin 
-        && !outOfBoundsWidthMax 
-        && !outOfBoundsHeightMin
-        && !outOfBoundsHeightMax) return;
-
-        x = outOfBoundsWidthMin ? this.width : outOfBoundsWidthMax ? 0 : x;
-        y = outOfBoundsHeightMin ? this.height : outOfBoundsHeightMax ? 0 : y;
-
-        boid.updatePosition(x, y);
-    }
-
-    dimensionsSetup(){
-        this.width = this.scale.width;
-        this.height = this.scale.height;
-
-        this.widthBoundsMax = this.width * this.boundsBuffer;
-        this.widthBoundsMin = this.width - this.widthBoundsMax;
-
-        this.heightBoundsMax = this.height * this.boundsBuffer;
-        this.heightBoundsMin = this.height - this.heightBoundsMax;
-    }
-
     setupInputs() {
         this.input.on('pointerdown', (pointer)=> {
-            if(pointer.rightButtonDown()){
-                this.targetPos = undefined;
-            }
-            else{
-                const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-                this.targetPos = {x: worldPoint.x, y: worldPoint.y};
-            }
+            const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+            this.targetPos = new Phaser.Math.Vector2(worldPoint.x, worldPoint.y);
+        });
+    }
 
+    initBoidsControllers() {
+        this.boidsControllers = GAME_CONFIG.boidsControllers.map(bc=>
+        {
+            const { initialCount, steeringBehaviours, id, size } = bc;
+            const relevantEventEmitter = new Phaser.Events.EventEmitter();
+            this.eventEmitters[id] = relevantEventEmitter;
+            const config = new BoidsConfig(id, initialCount, size, steeringBehaviours, relevantEventEmitter);
+            
+            return new BoidsController(this.graphics, this.dimensions, config); 
         });
     }
     
@@ -285,7 +326,7 @@ export class TargetSteeringBehaviour extends SteeringBehaviour {
         const heading = normalizeVector(vectorDir(target, boidPos));
 
         let desiredSpeed = boid.maximumSpeed;
-        const distanceFromTarget = vectorDist(target, boid.pos());
+        const distanceFromTarget = vectorDist(target, boidPos);
 
         if(distanceFromTarget < MAX_SPEED_DIST){
             const brakeFactor = distanceFromTarget / MAX_SPEED_DIST;
@@ -294,7 +335,7 @@ export class TargetSteeringBehaviour extends SteeringBehaviour {
 
         const desiredVelocity = vectorMult(heading, desiredSpeed);
 
-        steeringContext.putInterestForVelocity(desiredVelocity, this.weightResolver());
+        steeringContext.putInterestForVelocity(desiredVelocity, this.weightResolver);
     }
 
 }
@@ -343,32 +384,35 @@ export const DIRECTION_VECTORS = [
 ].map(normalizeVector);
 </file>
 
+<file path="steering/constants/SteeringType.js">
+export const SteeringType = Object.freeze({
+    TARGET: 0,
+});
+</file>
+
 <file path="steering/model/SteeringContext.js">
 import { DIRECTION_VECTORS, DIRECTION_COUNT } from '../constants/Direction.js';
 import { vectorMagnitude, vectorMult } from '../../Util/NumUtils.js';
 
 export class SteeringContext {
-    interestMap;
-    dangerMap;
-
     constructor(){
         this.interestMap = Array(DIRECTION_COUNT).fill(0);
         this.dangerMap = Array(DIRECTION_COUNT).fill(0);
     }
 
-    putDangerForVelocity(velocity, weight) {
-        const weightedVelocity = vectorMult(velocity, weight);
+    putDangerForVelocity(velocity, weightResolver) {
+        const weightedVelocity = velocity.clone().scale(weight)
         const relevantIndex = this.directionToIndex(weightedVelocity);
-        const score = vectorMagnitude(weightedVelocity);
+        const score = weightedVelocity.length();
 
         if(this.dangerMap[relevantIndex] <= score)
             this.dangerMap[relevantIndex] = score;
     }
 
-    putInterestForVelocity(velocity, weight) {
-        const weightedVelocity = vectorMult(velocity, weight);
+    putInterestForVelocity(velocity, weightResolver) {
+        const weightedVelocity = velocity.clone().scale(weight)
         const relevantIndex = this.directionToIndex(weightedVelocity);
-        const score = vectorMagnitude(weightedVelocity);
+        const score = weightedVelocity.length();
 
         if(this.interestMap[relevantIndex] <= score)
             this.interestMap[relevantIndex] = score;
@@ -399,7 +443,7 @@ export class SteeringContext {
             result.y += DIRECTION_VECTORS[i].y * score;
         }
 
-        return result;
+        return new Phaser.Math.Vector2(result.x, result.y);
     }
 }
 </file>
@@ -410,38 +454,36 @@ import { SteeringContext } from './model/SteeringContext.js';
 import { lerpVector, clampVectorMagnitude } from '../Util/NumUtils.js';
 
 export class SteeringController {
-    steeringBehaviours;
-    targetSteeringWeightResolver;
-
-    constructor() {
-        this.initBehaviours();
+    constructor(steeringBehaviours) {
         this.initTargetSteeringWeightResolvers();
+        this.initBehaviours();
+        this.steeringBehaviours = steeringBehaviours;
     }
 
     updateBoid(boid, boids, target) {
         const ctx = new SteeringContext();
 
         for(let i = 0; i < this.steeringBehaviours.length; ++i){
-            this.steeringBehaviours[i].steer(ctx, boid, boids, target);
+            const mappedBehaviour = this.mappedSteeringBehaviours[this.steeringBehaviours[i]];
+
+            if(!mappedBehaviour) throw Error(`No behaviour mapped for: ${this.steeringBehaviours[i]}`);
+
+            mappedBehaviour.steer(ctx, boid, boids, target);
         }
 
-        const desiredVelocity = ctx.desiredVelocity();
+        const desiredVelocity = ctx.desiredVelocity(); 
 
-        const clampedDesiredVelocity = clampVectorMagnitude(desiredVelocity, boid.maximumSpeed);
+        const clampedDesiredVelocity = desiredVelocity.clone().limit(boid.maximumSpeed);
 
-        const newVelocity = lerpVector(
-            boid.velocity,
-            clampedDesiredVelocity,
-            boid.turnSharpness
-        );
+        const newVelocity = boid.velocity.clone().lerp(clampedDesiredVelocity, boid.turnSharpness)
 
         boid.move(newVelocity);
     }
 
     initBehaviours() {
-        this.steeringBehaviours = [
-            new TargetSteeringBehaviour(this.targetSteeringWeightResolver),
-        ];
+        this.mappedSteeringBehaviours = {
+            'TARGET': new TargetSteeringBehaviour(this.targetSteeringWeightResolver),
+        };
     }
 
     initTargetSteeringWeightResolvers(){
@@ -452,7 +494,7 @@ export class SteeringController {
 }
 </file>
 
-<file path="Util/GraphicsUtils.js">
+<file path="util/GraphicsUtils.js">
 export function drawBoid(graphics, x,y,rotation, size){
 
         graphics.fillStyle(0xffffff, 1);
@@ -504,77 +546,6 @@ export function drawX(graphics, x, y, size = 20) {
             x + size,
             y - size
         );
-}
-</file>
-
-<file path="Util/NumUtils.js">
-export function randomRange(min, max) {
-  return min + Math.random() * (max - min);
-}
-
-export function normalizeVector(vector) {
-
-    const { x, y } = vector;
-
-    const length = Math.hypot(x, y);
-
-    if (length === 0) {
-        return { x: 0, y: 0 };
-    }
-
-    return {
-        x: x / length,
-        y: y / length
-    };
-}
-
-export function lerpVector(a, b, t) {
-    return {
-        x: a.x + (b.x - a.x) * t,
-        y: a.y + (b.y - a.y) * t
-    };
-}
-
-export function vectorMagnitude(vector){
-    return Math.hypot(vector.x, vector.y);
-}
-
-export function clampVectorMagnitude(vector, maxLength) {
-    const length = Math.hypot(vector.x, vector.y);
-
-    if (length === 0 || length <= maxLength) {
-        return vector;
-    }
-
-    const scale = maxLength / length;
-
-    return {
-        x: vector.x * scale,
-        y: vector.y * scale
-    };
-}
-
-export function vectorDist(a, b) {
-    const dx = a.x - b.x;
-    const dy = a.y - b.y;
-
-    const distance = Math.hypot(dx, dy);
-    
-    return distance;
-}
-
-export function vectorMult(vector, scale) {
-    return {
-        x: vector.x * scale,
-        y: vector.y * scale    
-    };
-}
-
-export function vectorDir(a, b) {
-    return {
-        x: a.x - b.x,
-        y: a.y - b.y
-    };
 }
 </file>
 

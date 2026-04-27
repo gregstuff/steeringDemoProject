@@ -1,40 +1,37 @@
 import { TargetSteeringBehaviour } from './behaviours/impl/TargetSteeringBehaviour.js';
 import { SteeringContext } from './model/SteeringContext.js';
-import { lerpVector, clampVectorMagnitude } from '../Util/NumUtils.js';
 
 export class SteeringController {
-    steeringBehaviours;
-    targetSteeringWeightResolver;
-
-    constructor() {
+    constructor(steeringBehaviours) {
         this.initTargetSteeringWeightResolvers();
         this.initBehaviours();
+        this.steeringBehaviours = steeringBehaviours;
     }
 
     updateBoid(boid, boids, target) {
         const ctx = new SteeringContext();
 
         for(let i = 0; i < this.steeringBehaviours.length; ++i){
-            this.steeringBehaviours[i].steer(ctx, boid, boids, target);
+            const mappedBehaviour = this.mappedSteeringBehaviours[this.steeringBehaviours[i]];
+
+            if(!mappedBehaviour) throw Error(`No behaviour mapped for: ${this.steeringBehaviours[i]}`);
+
+            mappedBehaviour.steer(ctx, boid, boids, target);
         }
 
-        const desiredVelocity = ctx.desiredVelocity();
+        const desiredVelocity = ctx.desiredVelocity(); 
 
-        const clampedDesiredVelocity = clampVectorMagnitude(desiredVelocity, boid.maximumSpeed);
+        const clampedDesiredVelocity = desiredVelocity.clone().limit(boid.maximumSpeed);
 
-        const newVelocity = lerpVector(
-            boid.velocity,
-            clampedDesiredVelocity,
-            boid.turnSharpness
-        );
+        const newVelocity = boid.velocity.clone().lerp(clampedDesiredVelocity, boid.turnSharpness)
 
         boid.move(newVelocity);
     }
 
     initBehaviours() {
-        this.steeringBehaviours = [
-            new TargetSteeringBehaviour(this.targetSteeringWeightResolver),
-        ];
+        this.mappedSteeringBehaviours = {
+            'TARGET': new TargetSteeringBehaviour(this.targetSteeringWeightResolver),
+        };
     }
 
     initTargetSteeringWeightResolvers(){

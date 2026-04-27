@@ -1,5 +1,3 @@
-import { normalizeVector } from '../../Util/NumUtils.js';
-
 export const DirectionIndex = Object.freeze({
     RIGHT: 0,
     DOWN_RIGHT: 1,
@@ -13,13 +11,15 @@ export const DirectionIndex = Object.freeze({
 
 export const DIRECTION_COUNT = Object.keys(DirectionIndex).length;
 
+
+
 export const DIRECTION_VECTORS = [
-    { x: 1,  y: 0  }, // RIGHT
-    { x: 1,  y: 1  }, // DOWN_RIGHT
-    { x: 0,  y: 1  }, // DOWN
-    { x: -1, y: 1  }, // DOWN_LEFT
-    { x: -1, y: 0  }, // LEFT
-    { x: -1, y: -1 }, // UP_LEFT
-    { x: 0,  y: -1 }, // UP
-    { x: 1,  y: -1 }  // UP_RIGHT
-].map(normalizeVector);
+    new Phaser.Math.Vector2(1, 0),   // RIGHT
+    new Phaser.Math.Vector2(1, 1),   // DOWN_RIGHT
+    new Phaser.Math.Vector2(0, 1),   // DOWN
+    new Phaser.Math.Vector2(-1, 1),  // DOWN_LEFT
+    new Phaser.Math.Vector2(-1, 0),  // LEFT
+    new Phaser.Math.Vector2(-1, -1), // UP_LEFT
+    new Phaser.Math.Vector2(0, -1),  // UP
+    new Phaser.Math.Vector2(1, -1)   // UP_RIGHT
+].map(v=>v.normalize());
