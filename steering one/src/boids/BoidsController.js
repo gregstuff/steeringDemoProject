@@ -22,20 +22,13 @@ export class BoidsController {
     initBoids(){
         this.boids = [];
 
-        const { maximumSpeed, size, maximumForce, initialCount } = this.config;
+        const { initialCount } = this.config;
 
         for(let i  = 0; i < initialCount; ++i){
-            const startingPos = new Phaser.Math.Vector2(
+            const randPos = new Phaser.Math.Vector2(
                 Phaser.Math.Between(0, this.bounds.width), 
                 Phaser.Math.Between(0, this.bounds.height));
-
-            const startingVelocity = new Phaser.Math.Vector2(
-                Phaser.Math.Between(0, 1), 
-                Phaser.Math.Between(0, 1))
-                .normalize()
-                .scale(maximumSpeed);
-
-            this.boids.push(new Boid(startingPos, startingVelocity, size, maximumSpeed, maximumForce));
+            this.addBoid(randPos);
         }
     }
 
@@ -83,12 +76,24 @@ export class BoidsController {
         this.config.eventEmitter.on('targetChanged', this.handleTargetMoved, this);
     }
 
-    handleSpawn() {
-        console.log('handle spawn!');
+    handleSpawn(targetPos) {
+        this.addBoid(targetPos);
     }
 
     handleTargetMoved(targetPos) {
         this.targetPos = targetPos;
+    }
+
+    addBoid(startingPos){
+        const { maximumSpeed, size, maximumForce } = this.config;
+
+        const startingVelocity = new Phaser.Math.Vector2(
+            Phaser.Math.Between(0, 1), 
+            Phaser.Math.Between(0, 1))
+            .normalize()
+            .scale(maximumSpeed);
+
+        this.boids.push(new Boid(startingPos, startingVelocity, size, maximumSpeed, maximumForce));
     }
 
 }

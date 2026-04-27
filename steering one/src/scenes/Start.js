@@ -6,10 +6,17 @@ import { GAME_CONFIG } from '../config/GameConfig.js';
 
 const BOUNDS_BUFFER = 1.2;
 
+const MouseMode = Object.freeze({
+    TARGET: 'TARGET',
+    SPAWN: 'SPAWN'
+});
+
 export class Start extends Phaser.Scene {
     constructor() {
         super('Start');
         this.targetPos = undefined;
+        this.mouseMode = MouseMode.TARGET;
+        this.selectedBoidsControllerIndex = 0;
     }
 
     preload() {
@@ -22,6 +29,11 @@ export class Start extends Phaser.Scene {
         this.eventEmitters = {};
         this.bounds = new Bounds(this.scale.width, this.scale.height, BOUNDS_BUFFER);
         this.initBoidsControllers();
+
+        this.uiText = this.add.text(10, 10, '', {
+            fontSize: '20px',
+            color: '#ffffff'
+        });
     }
 
     update() {
@@ -42,14 +54,51 @@ export class Start extends Phaser.Scene {
     }
 
     setupInputs() {
-        this.input.on('pointerdown', (pointer)=> {
-            const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-            this.targetPos = new Phaser.Math.Vector2(worldPoint.x, worldPoint.y);
 
-            Object.values(this.eventEmitters)
-                .forEach(e => e.emit('targetChanged', this.targetPos));
+        this.input.keyboard.on('keydown-Z', () => {
+                this.toggleMouseMode();
+        });
+
+        this.input.keyboard.on('keydown-X', () => {
+            this.cycleSelectedBoidsController();
+        });
+
+        this.input.on('pointerdown', (pointer) => {
+            const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+            const clickPos = new Phaser.Math.Vector2(worldPoint.x, worldPoint.y);
+
+            if (this.mouseMode === MouseMode.TARGET) {
+                this.targetPos = clickPos;
+
+                Object.values(this.eventEmitters)
+                    .forEach(e => e.emit('targetChanged', clickPos));
+
+                return;
+            }
+                if (this.mouseMode === MouseMode.SPAWN) {
+                const selectedController = this.boidsControllers[this.selectedBoidsControllerIndex];
+
+                selectedController.config.eventEmitter.emit('spawn', clickPos);
+
+                return;
+            }
         });
     }
+
+    toggleMouseMode() {
+        this.mouseMode =
+            this.mouseMode === MouseMode.TARGET
+                ? MouseMode.SPAWN
+                : MouseMode.TARGET;
+        this.updateUIText();
+    }
+
+    cycleSelectedBoidsController() {
+        this.selectedBoidsControllerIndex =
+            (this.selectedBoidsControllerIndex + 1) % this.boidsControllers.length;
+        this.updateUIText();
+    }
+
 
     initBoidsControllers() {
         this.boidsControllers = GAME_CONFIG.boidsControllers.map(bc=>
@@ -68,6 +117,24 @@ export class Start extends Phaser.Scene {
             
             return new BoidsController(this.graphics, this.bounds, config); 
         });
+    }
+
+    updateUIText() {
+
+         const selectedController = this.boidsControllers?.[this.selectedBoidsControllerIndex];
+
+        const controllerLabel = selectedController
+            ? selectedController.config.id
+            : 'none';
+
+        const modeLabel = this.mouseMode === MouseMode.TARGET
+            ? 'Target'
+            : 'Spawn';
+
+        this.uiText.setText(
+            `Click action: ${modeLabel}\nSelected controller: ${controllerLabel}`
+        );
+
     }
     
 }
