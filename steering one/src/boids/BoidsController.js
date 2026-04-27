@@ -1,5 +1,6 @@
 import { Boid } from '../model/Boid.js';
 import { SteeringController } from '../steering/SteeringController.js';
+import { drawBoid } from '../util/GraphicsUtils.js';
 
 export class BoidsController {
 
@@ -9,6 +10,7 @@ export class BoidsController {
         this.config = config;
         this.setupEvents();
         this.initBoids();
+        this.targetPos = undefined;
         this.steeringController = new SteeringController(config.steeringBehaviours);
     }
 
@@ -22,8 +24,6 @@ export class BoidsController {
 
         const { maximumSpeed, size, maximumForce, initialCount } = this.config;
 
-        console.log(`initialCount: ${initialCount}`);
-
         for(let i  = 0; i < initialCount; ++i){
             const startingPos = new Phaser.Math.Vector2(
                 Phaser.Math.Between(0, this.bounds.width), 
@@ -35,16 +35,20 @@ export class BoidsController {
                 .normalize()
                 .scale(maximumSpeed);
 
-            console.log(`init: startingPos: ${startingPos}, startingVelocity: ${startingVelocity}`);
-
             this.boids.push(new Boid(startingPos, startingVelocity, size, maximumSpeed, maximumForce));
         }
     }
 
     drawBoids() {
         for(let i = 0; i < this.boids.length; ++i){
-            const { x, y, rotation, size } = this.boids[i];
-            drawBoid(this.graphics, x, y, rotation, size);
+            const boid = this.boids[i];
+            drawBoid(
+                this.graphics,
+                boid.pos.x,
+                boid.pos.y,
+                boid.getRotation(),
+                boid.size
+            );
         }
     }
 
@@ -56,7 +60,7 @@ export class BoidsController {
     }
 
     wrapAround(boid){
-        let {x, y} = boid;
+        let {x, y} = boid.pos;
 
         const outOfBoundsWidthMin = x < this.widthBoundsMin;
         const outOfBoundsWidthMax = x > this.widthBoundsMax;
@@ -76,10 +80,15 @@ export class BoidsController {
 
     setupEvents() {
         this.config.eventEmitter.on('spawn', this.handleSpawn, this);
+        this.config.eventEmitter.on('targetChanged', this.handleTargetMoved, this);
     }
 
     handleSpawn() {
         console.log('handle spawn!');
+    }
+
+    handleTargetMoved(targetPos) {
+        this.targetPos = targetPos;
     }
 
 }

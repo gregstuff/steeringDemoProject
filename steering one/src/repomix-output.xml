@@ -79,14 +79,19 @@ export class BoidsConfig {
 </file>
 
 <file path="boids/BoidsController.js">
+import { Boid } from '../model/Boid.js';
+import { SteeringController } from '../steering/SteeringController.js';
+import { drawBoid } from '../util/GraphicsUtils.js';
+
 export class BoidsController {
 
-    constructor(graphics, dimensions, config){
+    constructor(graphics, bounds, config){
         this.graphics = graphics;
-        this.dimensions = dimensions;
+        this.bounds = bounds;
         this.config = config;
         this.setupEvents();
         this.initBoids();
+        this.targetPos = undefined;
         this.steeringController = new SteeringController(config.steeringBehaviours);
     }
 
@@ -98,13 +103,12 @@ export class BoidsController {
     initBoids(){
         this.boids = [];
 
-        const { maximumSpeed, size, maximumSpeed, maximumForce, initialCount } = this.config;
+        const { maximumSpeed, size, maximumForce, initialCount } = this.config;
 
         for(let i  = 0; i < initialCount; ++i){
-
             const startingPos = new Phaser.Math.Vector2(
-                Phaser.Math.Between(0, this.dimensions.width), 
-                Phaser.Math.Between(0, this.dimensions.height));
+                Phaser.Math.Between(0, this.bounds.width), 
+                Phaser.Math.Between(0, this.bounds.height));
 
             const startingVelocity = new Phaser.Math.Vector2(
                 Phaser.Math.Between(0, 1), 
@@ -118,8 +122,14 @@ export class BoidsController {
 
     drawBoids() {
         for(let i = 0; i < this.boids.length; ++i){
-            const { x, y, rotation, size } = this.boids[i];
-            drawBoid(this.graphics, x, y, rotation, size);
+            const boid = this.boids[i];
+            drawBoid(
+                this.graphics,
+                boid.pos.x,
+                boid.pos.y,
+                boid.getRotation(),
+                boid.size
+            );
         }
     }
 
@@ -131,7 +141,7 @@ export class BoidsController {
     }
 
     wrapAround(boid){
-        let {x, y} = boid;
+        let {x, y} = boid.pos;
 
         const outOfBoundsWidthMin = x < this.widthBoundsMin;
         const outOfBoundsWidthMax = x > this.widthBoundsMax;
@@ -150,11 +160,16 @@ export class BoidsController {
     }
 
     setupEvents() {
-        this.config.eventEmitter.on('spawn', handleSpawn, this);
+        this.config.eventEmitter.on('spawn', this.handleSpawn, this);
+        this.config.eventEmitter.on('targetChanged', this.handleTargetMoved, this);
     }
 
     handleSpawn() {
         console.log('handle spawn!');
+    }
+
+    handleTargetMoved(targetPos) {
+        this.targetPos = targetPos;
     }
 
 }
@@ -211,19 +226,17 @@ export class Boid {
         this.maximumForce = maximumForce;
     }
     
-    move(velocity) {
-        const { currX, currY } = this.velocity;
-        const { newX, newY } = velocity;
-
-        this.velocity = new Phaser.Math.Vector2(currX + newX, currY + newY);
+    move(newVelocity) {
+        this.velocity = newVelocity;
+        this.pos.add(this.velocity);
     }
 
     getRotation() {
         return Phaser.Math.Angle.Between(
             0,
             0,
-            velocity.x,
-            velocity.y
+            this.velocity.x,
+            this.velocity.y
         );
     }
 
@@ -237,17 +250,17 @@ export class Bounds {
         this.height = height;
 
         this.widthBoundsMax = width * boundsBuffer;
-        this.widthBoundsMin = width - widthBoundsMax;
+        this.widthBoundsMin = width - this.widthBoundsMax;
 
         this.heightBoundsMax = height * boundsBuffer;
-        this.heightBoundsMin = height - heightBoundsMax;
+        this.heightBoundsMin = height - this.heightBoundsMax;
     }
 }
 </file>
 
 <file path="scenes/Start.js">
 import { Bounds } from '../model/Bounds.js';
-import { drawBoid, drawX } from '../Util/GraphicsUtils.js';
+import { drawX } from '../util/GraphicsUtils.js';
 import { BoidsController } from '../boids/BoidsController.js';
 import { BoidsConfig } from '../boids/BoidsConfig.js';
 import { GAME_CONFIG } from '../config/GameConfig.js'; 
@@ -276,7 +289,7 @@ export class Start extends Phaser.Scene {
         this.graphics.clear();
         this.drawTarget();
 
-        for(let i = 0; i < this.boidsControllers; ++i){
+        for(let i = 0; i < this.boidsControllers.length; ++i){
             this.boidsControllers[i].tick();
         }
     }
@@ -293,18 +306,28 @@ export class Start extends Phaser.Scene {
         this.input.on('pointerdown', (pointer)=> {
             const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
             this.targetPos = new Phaser.Math.Vector2(worldPoint.x, worldPoint.y);
+
+            Object.values(this.eventEmitters)
+                .forEach(e => e.emit('targetChanged', this.targetPos));
         });
     }
 
     initBoidsControllers() {
         this.boidsControllers = GAME_CONFIG.boidsControllers.map(bc=>
         {
-            const { initialCount, steeringBehaviours, id, size } = bc;
+            const { initialCount, steeringBehaviours, maximumForce, maximumSpeed, id, size } = bc;
             const relevantEventEmitter = new Phaser.Events.EventEmitter();
             this.eventEmitters[id] = relevantEventEmitter;
-            const config = new BoidsConfig(id, initialCount, size, steeringBehaviours, relevantEventEmitter);
+            const config = new BoidsConfig(
+                id, 
+                initialCount, 
+                size, 
+                maximumSpeed, 
+                maximumForce, 
+                steeringBehaviours, 
+                relevantEventEmitter);
             
-            return new BoidsController(this.graphics, this.dimensions, config); 
+            return new BoidsController(this.graphics, this.bounds, config); 
         });
     }
     
@@ -313,7 +336,6 @@ export class Start extends Phaser.Scene {
 
 <file path="steering/behaviours/impl/TargetSteeringBehaviour.js">
 import { SteeringBehaviour } from '../SteeringBehaviour.js';
-import { vectorDist, vectorDir, vectorMult, normalizeVector } from '../../../Util/NumUtils.js';
 
 const MAX_SPEED_DIST = 30;
 
@@ -322,20 +344,23 @@ export class TargetSteeringBehaviour extends SteeringBehaviour {
     steer(steeringContext, boid, boids, target){
         if (!target) return;
 
-        const boidPos = boid.pos();
-        const heading = normalizeVector(vectorDir(target, boidPos));
+        const boidPos = boid.pos;
+        const desiredVelocity = new Phaser.Math.Vector2()
+            .copy(target)
+            .subtract(boidPos);
+
+        const distanceFromTarget = desiredVelocity.length();
+
+        const heading = desiredVelocity.clone().normalize();
 
         let desiredSpeed = boid.maximumSpeed;
-        const distanceFromTarget = vectorDist(target, boidPos);
 
         if(distanceFromTarget < MAX_SPEED_DIST){
             const brakeFactor = distanceFromTarget / MAX_SPEED_DIST;
             desiredSpeed *= brakeFactor;
         }
-
-        const desiredVelocity = vectorMult(heading, desiredSpeed);
-
-        steeringContext.putInterestForVelocity(desiredVelocity, this.weightResolver);
+        
+        steeringContext.putInterestForVelocity(heading.clone().scale(desiredSpeed), this.weightResolver);
     }
 
 }
@@ -357,8 +382,6 @@ export class SteeringBehaviour {
 </file>
 
 <file path="steering/constants/Direction.js">
-import { normalizeVector } from '../../Util/NumUtils.js';
-
 export const DirectionIndex = Object.freeze({
     RIGHT: 0,
     DOWN_RIGHT: 1,
@@ -372,16 +395,18 @@ export const DirectionIndex = Object.freeze({
 
 export const DIRECTION_COUNT = Object.keys(DirectionIndex).length;
 
+
+
 export const DIRECTION_VECTORS = [
-    { x: 1,  y: 0  }, // RIGHT
-    { x: 1,  y: 1  }, // DOWN_RIGHT
-    { x: 0,  y: 1  }, // DOWN
-    { x: -1, y: 1  }, // DOWN_LEFT
-    { x: -1, y: 0  }, // LEFT
-    { x: -1, y: -1 }, // UP_LEFT
-    { x: 0,  y: -1 }, // UP
-    { x: 1,  y: -1 }  // UP_RIGHT
-].map(normalizeVector);
+    new Phaser.Math.Vector2(1, 0),   // RIGHT
+    new Phaser.Math.Vector2(1, 1),   // DOWN_RIGHT
+    new Phaser.Math.Vector2(0, 1),   // DOWN
+    new Phaser.Math.Vector2(-1, 1),  // DOWN_LEFT
+    new Phaser.Math.Vector2(-1, 0),  // LEFT
+    new Phaser.Math.Vector2(-1, -1), // UP_LEFT
+    new Phaser.Math.Vector2(0, -1),  // UP
+    new Phaser.Math.Vector2(1, -1)   // UP_RIGHT
+].map(v=>v.normalize());
 </file>
 
 <file path="steering/constants/SteeringType.js">
@@ -392,7 +417,6 @@ export const SteeringType = Object.freeze({
 
 <file path="steering/model/SteeringContext.js">
 import { DIRECTION_VECTORS, DIRECTION_COUNT } from '../constants/Direction.js';
-import { vectorMagnitude, vectorMult } from '../../Util/NumUtils.js';
 
 export class SteeringContext {
     constructor(){
@@ -401,7 +425,7 @@ export class SteeringContext {
     }
 
     putDangerForVelocity(velocity, weightResolver) {
-        const weightedVelocity = velocity.clone().scale(weight)
+        const weightedVelocity = velocity.clone().scale(weightResolver())
         const relevantIndex = this.directionToIndex(weightedVelocity);
         const score = weightedVelocity.length();
 
@@ -410,7 +434,7 @@ export class SteeringContext {
     }
 
     putInterestForVelocity(velocity, weightResolver) {
-        const weightedVelocity = velocity.clone().scale(weight)
+        const weightedVelocity = velocity.clone().scale(weightResolver())
         const relevantIndex = this.directionToIndex(weightedVelocity);
         const score = weightedVelocity.length();
 
@@ -451,7 +475,6 @@ export class SteeringContext {
 <file path="steering/SteeringController.js">
 import { TargetSteeringBehaviour } from './behaviours/impl/TargetSteeringBehaviour.js';
 import { SteeringContext } from './model/SteeringContext.js';
-import { lerpVector, clampVectorMagnitude } from '../Util/NumUtils.js';
 
 export class SteeringController {
     constructor(steeringBehaviours) {
@@ -468,6 +491,8 @@ export class SteeringController {
 
             if(!mappedBehaviour) throw Error(`No behaviour mapped for: ${this.steeringBehaviours[i]}`);
 
+            console.log(`running steering for ${this.steeringBehaviours[i]}`);
+
             mappedBehaviour.steer(ctx, boid, boids, target);
         }
 
@@ -475,7 +500,7 @@ export class SteeringController {
 
         const clampedDesiredVelocity = desiredVelocity.clone().limit(boid.maximumSpeed);
 
-        const newVelocity = boid.velocity.clone().lerp(clampedDesiredVelocity, boid.turnSharpness)
+        const newVelocity = boid.velocity.clone().lerp(clampedDesiredVelocity, boid.maximumForce);
 
         boid.move(newVelocity);
     }

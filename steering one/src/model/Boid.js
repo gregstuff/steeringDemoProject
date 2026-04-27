@@ -7,19 +7,17 @@ export class Boid {
         this.maximumForce = maximumForce;
     }
     
-    move(velocity) {
-        const { currX, currY } = this.velocity;
-        const { newX, newY } = velocity;
-
-        this.velocity = new Phaser.Math.Vector2(currX + newX, currY + newY);
+    move(newVelocity) {
+        this.velocity = newVelocity;
+        this.pos.add(this.velocity);
     }
 
     getRotation() {
         return Phaser.Math.Angle.Between(
             0,
             0,
-            velocity.x,
-            velocity.y
+            this.velocity.x,
+            this.velocity.y
         );
     }
 

@@ -1,5 +1,5 @@
 import { Bounds } from '../model/Bounds.js';
-import { drawBoid, drawX } from '../util/GraphicsUtils.js';
+import { drawX } from '../util/GraphicsUtils.js';
 import { BoidsController } from '../boids/BoidsController.js';
 import { BoidsConfig } from '../boids/BoidsConfig.js';
 import { GAME_CONFIG } from '../config/GameConfig.js'; 
@@ -28,7 +28,7 @@ export class Start extends Phaser.Scene {
         this.graphics.clear();
         this.drawTarget();
 
-        for(let i = 0; i < this.boidsControllers; ++i){
+        for(let i = 0; i < this.boidsControllers.length; ++i){
             this.boidsControllers[i].tick();
         }
     }
@@ -45,6 +45,9 @@ export class Start extends Phaser.Scene {
         this.input.on('pointerdown', (pointer)=> {
             const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
             this.targetPos = new Phaser.Math.Vector2(worldPoint.x, worldPoint.y);
+
+            Object.values(this.eventEmitters)
+                .forEach(e => e.emit('targetChanged', this.targetPos));
         });
     }
 

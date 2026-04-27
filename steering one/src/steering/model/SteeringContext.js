@@ -7,7 +7,7 @@ export class SteeringContext {
     }
 
     putDangerForVelocity(velocity, weightResolver) {
-        const weightedVelocity = velocity.clone().scale(weight)
+        const weightedVelocity = velocity.clone().scale(weightResolver())
         const relevantIndex = this.directionToIndex(weightedVelocity);
         const score = weightedVelocity.length();
 
@@ -16,7 +16,7 @@ export class SteeringContext {
     }
 
     putInterestForVelocity(velocity, weightResolver) {
-        const weightedVelocity = velocity.clone().scale(weight)
+        const weightedVelocity = velocity.clone().scale(weightResolver())
         const relevantIndex = this.directionToIndex(weightedVelocity);
         const score = weightedVelocity.length();
 

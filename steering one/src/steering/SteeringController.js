@@ -16,6 +16,8 @@ export class SteeringController {
 
             if(!mappedBehaviour) throw Error(`No behaviour mapped for: ${this.steeringBehaviours[i]}`);
 
+            console.log(`running steering for ${this.steeringBehaviours[i]}`);
+
             mappedBehaviour.steer(ctx, boid, boids, target);
         }
 
@@ -23,7 +25,7 @@ export class SteeringController {
 
         const clampedDesiredVelocity = desiredVelocity.clone().limit(boid.maximumSpeed);
 
-        const newVelocity = boid.velocity.clone().lerp(clampedDesiredVelocity, boid.turnSharpness)
+        const newVelocity = boid.velocity.clone().lerp(clampedDesiredVelocity, boid.maximumForce);
 
         boid.move(newVelocity);
     }
