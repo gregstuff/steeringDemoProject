@@ -2,9 +2,11 @@ import { Boid } from '../model/Boid.js';
 import { SteeringController } from '../steering/SteeringController.js';
 import { drawBoid } from '../util/GraphicsUtils.js';
 
+const CACHE_UPDATE_SECONDS = 0.2;
+
 export class BoidsController {
 
-    constructor(graphics, bounds, config){
+    constructor(graphics, bounds, config) {
         this.graphics = graphics;
         this.bounds = bounds;
         this.config = config;
@@ -12,14 +14,16 @@ export class BoidsController {
         this.initBoids();
         this.targetPos = undefined;
         this.steeringController = new SteeringController(config.steeringBehaviours);
+        this.lastCacheUpdate = undefined;
     }
 
-    tick(){
+    tick(allBoids, secondsSinceStart) {
+        this.updateBoidReferences(allBoids, secondsSinceStart);
         this.updateBoids();
         this.drawBoids();
     }
 
-    initBoids(){
+    initBoids() {
         this.boids = [];
 
         const { initialCount } = this.config;
@@ -45,14 +49,14 @@ export class BoidsController {
         }
     }
 
-     updateBoids(){
+     updateBoids() {
         for(let i = 0; i < this.boids.length; ++i){
-            this.steeringController.updateBoid(this.boids[i], this.boids, this.targetPos);
+            this.steeringController.updateBoid(this.boids[i], this.targetPos);
             this.wrapAround(this.boids[i]);
         }
     }
 
-    wrapAround(boid){
+    wrapAround(boid) {
         let {x, y} = boid.pos;
 
         const outOfBoundsWidthMin = x < this.bounds.widthBoundsMin;
@@ -84,8 +88,8 @@ export class BoidsController {
         this.targetPos = targetPos;
     }
 
-    addBoid(startingPos){
-        const { maximumSpeed, size, maximumForce } = this.config;
+    addBoid(startingPos) {
+        const { maximumSpeed, size, maximumForce, faction } = this.config;
 
         const startingVelocity = new Phaser.Math.Vector2(
             Phaser.Math.Between(0, 1), 
@@ -93,7 +97,17 @@ export class BoidsController {
             .normalize()
             .scale(maximumSpeed);
 
-        this.boids.push(new Boid(startingPos, startingVelocity, size, maximumSpeed, maximumForce));
+        this.boids.push(new Boid(startingPos, startingVelocity, size, faction, maximumSpeed, maximumForce));
+    }
+
+    updateBoidReferences(allBoids, secondsSinceStart) {
+        if(this.lastCacheUpdate && this.lastCacheUpdate + CACHE_UPDATE_SECONDS > secondsSinceStart ) return;
+
+        this.lastCacheUpdate = secondsSinceStart;
+
+        for(let i = 0; i < this.boids.length; ++i){
+            this.boids[i].updateCache(allBoids);
+        }
     }
 
 }

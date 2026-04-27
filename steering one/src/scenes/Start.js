@@ -39,9 +39,12 @@ export class Start extends Phaser.Scene {
     update() {
         this.graphics.clear();
         this.drawTarget();
+        const secondsSinceStart = this.time.now / 1000;
+
+        const allBoids = this.getAllBoids();
 
         for(let i = 0; i < this.boidsControllers.length; ++i){
-            this.boidsControllers[i].tick();
+            this.boidsControllers[i].tick(allBoids, secondsSinceStart);
         }
     }
 
@@ -103,13 +106,14 @@ export class Start extends Phaser.Scene {
     initBoidsControllers() {
         this.boidsControllers = GAME_CONFIG.boidsControllers.map(bc=>
         {
-            const { initialCount, steeringBehaviours, maximumForce, maximumSpeed, id, size } = bc;
+            const { initialCount, steeringBehaviours, maximumForce, maximumSpeed, id, size, faction } = bc;
             const relevantEventEmitter = new Phaser.Events.EventEmitter();
             this.eventEmitters[id] = relevantEventEmitter;
             const config = new BoidsConfig(
                 id, 
                 initialCount, 
                 size, 
+                faction,
                 maximumSpeed, 
                 maximumForce, 
                 steeringBehaviours, 
@@ -135,6 +139,10 @@ export class Start extends Phaser.Scene {
             `Click action: ${modeLabel}\nSelected controller: ${controllerLabel}`
         );
 
+    }
+
+    getAllBoids() {
+        return this.boidsControllers.flatMap(controller => controller.boids);
     }
     
 }

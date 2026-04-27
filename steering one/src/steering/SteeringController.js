@@ -8,7 +8,7 @@ export class SteeringController {
         this.steeringBehaviours = steeringBehaviours;
     }
 
-    updateBoid(boid, boids, target) {
+    updateBoid(boid, target) {
         const ctx = new SteeringContext();
 
         for(let i = 0; i < this.steeringBehaviours.length; ++i){
@@ -18,7 +18,7 @@ export class SteeringController {
 
             console.log(`running steering for ${this.steeringBehaviours[i]}`);
 
-            mappedBehaviour.steer(ctx, boid, boids, target);
+            mappedBehaviour.steer(ctx, boid, target);
         }
 
         const desiredVelocity = ctx.desiredVelocity(); 

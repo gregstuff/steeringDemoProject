@@ -6,7 +6,7 @@ export class SteeringBehaviour {
         this.weightResolver = weightResolver;
     }
 
-    steer(steeringContext, boid, boids, target){
+    steer(steeringContext, boid, target){
         throw new Error("SteeringBehaviour.steer() must be implemented by subclass");
     }
 }
